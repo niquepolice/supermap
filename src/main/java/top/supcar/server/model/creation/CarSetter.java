@@ -22,6 +22,7 @@ import info.pavie.basicosmparser.model.Node;
 import info.pavie.basicosmparser.model.Way;
 import top.supcar.server.session.SessionObjects;
 import top.supcar.server.graph.Distance;
+import top.supcar.server.graph.Graph;
 import top.supcar.server.holder.CarHolder;
 import top.supcar.server.model.Car;
 import top.supcar.server.model.ModelConstants;
@@ -77,10 +78,6 @@ public class CarSetter {
 
             periods.set(i, period);
         }
-
-    }
-
-    private void clearTpCa() {
         timePassed = new ArrayList<>(sources.size());
         for(int i = 0; i < sources.size(); i++) {
             timePassed.add(0.0);
@@ -107,7 +104,7 @@ public class CarSetter {
             if (period < minperiod) minperiod = period;
         }
         //maxMinRatio = maxperiod/minperiod;
-
+        System.out.println("minperiod: " + minperiod);
         for(int i = 0; i < sinks.size(); i++) {
             priority = (int)(periods.get(i)/minperiod);
             sinksPriorities.add(priority);
@@ -120,7 +117,8 @@ public class CarSetter {
 
     private double findPeriod(Node node) {
         double period, newPeriod;
-        Map<Node, List<Way>> nodeWays = sessionObjects.getGraph().getNodeWays();
+        Graph graph = sessionObjects.getGraph();
+        Map<Node, List<Way>> nodeWays = graph.getNodeWays();
         period = Integer.MAX_VALUE;
         for (Way way : nodeWays.get(node)) {
             switch (way.getTags().get("highway")) {
@@ -140,17 +138,22 @@ public class CarSetter {
                     newPeriod = CreationParams.SECONDARY_SPAWN_PERIOD;
                     break;
                 case "primary":
-                    newPeriod = CreationParams.PRIMARY_SPAWN_PRIOD;
+                    newPeriod = CreationParams.PRIMARY_SPAWN_PERIOD;
+                    break;
+                case "motorway":
+                    newPeriod = CreationParams.MOTORWAY_SPAWN_PERIOD;
                     break;
                 default:
                     newPeriod = CreationParams.OTHER_SPAWN_PERIOD;
                     break;
             }
+            int lanesImpact = Math.min(graph.numOfLanesFwd(way), graph.numOfLanesBwd(way));
+            if(lanesImpact != 0) newPeriod *= lanesImpact;
             if (newPeriod < period)
                 period = newPeriod;
         }
 
-        return period*6.0/capacity;
+        return period/capacity;
     }
 
     private Node findSink() {
@@ -171,6 +174,9 @@ public class CarSetter {
         return sink;
     }
 
+    /**
+     * Помещает машины на карту в момент начала моделирования
+     */
 
      // Помещает машины на карту в момент начала моделирования
 
@@ -180,10 +186,10 @@ public class CarSetter {
         double initSpawnProbability = CreationParams.DEFAULT_LVL_INIT_SPAWN_PROBABILITY;
 
         if (sources == null || sinks == null) findSrcsSinks();
-        if (periods == null) setPeriods(); clearTpCa();
+        if (periods == null) setPeriods();
         if (sinksPriorities == null) setSinksPriorities();
 
-        List<Node> nodes = sessionObjects.getGraph().getVertexList();
+       /* List<Node> nodes = sessionObjects.getGraph().getVertexList();
 
         int i = 0;
         int cars = Integer.MAX_VALUE;
@@ -206,7 +212,8 @@ public class CarSetter {
         }
         System.out.println("cars setted at fist: " + i);
 
-        //sessionObjects.getCarHolder().dump();
+        //sessionObjects.getCarHolder().dump();*/
+
     }
 
     public void setCapacity(int capacity) {
@@ -216,15 +223,16 @@ public class CarSetter {
     }
 
     public void maintain() {
-        double lastTimeQuant = sessionObjects.getWorldUpdater().getTimeQuant();
+        // double lastTimeQuant = sessionObjects.getWorldUpdater().getTimeQuant();
+        double lastTimeQuant;
         Instant instant;
         int ndIndexInSources;
-        double spawnProbability;
+        double spawnProbability, random;
         Node currSource;
 
         int sinksSize = sinks.size();
         Car cr = null;
-       /* if(lastInstant == null) {
+        if(lastInstant == null) {
             lastInstant = Instant.now();
             System.out.println("li " + lastInstant);
             lastTimeQuant = WorldUpdater.FIRST_QUANT;
@@ -235,7 +243,7 @@ public class CarSetter {
             lastTimeQuant /= 1000;
           //  System.out.println("lasttq: " + lastTimeQuant + " duration: " +  Duration.between(lastInstant,instant).toMillis());
             lastInstant = instant;
-        }*/
+        }
 
         for(int i = 0; i < sources.size(); i++) {
             currSource = sources.get(i);
@@ -250,20 +258,32 @@ public class CarSetter {
             if (!carArrived.get(i)) {
               //  System.out.println("!carArrived: " + i + " timePassed: " + timePassed.get(i) + " period: " + periods.get(i));
                 spawnProbability = lastTimeQuant/(periods.get(i) - timePassed.get(i));
-                if (Math.random() <= spawnProbability) {
-                    if (!sourceBlocked(currSource)) {
-                        for (int j = 0; j < 10 && cr == null; j++) {
+                random = Math.random();
+                // System.out.println("period: " + periods.get(i) + " time passed " + timePassed.get(i) + " ltq/time remained: " +
+                //  lastTimeQuant/(periods.get(i) - timePassed.get(i)) + " random: " + random);
+                if (random <= spawnProbability) {
+                    // if (!sourceBlocked(currSource)) {
+                    //System.out.println("car should be added, timePassed: " + timePassed.get(i) + " period: " + periods.get(i));
+                    //TODO: optimize
+                    for (int j = 0; j < 5 && cr == null; j++) {
                             //		System.out.println("i: " + i + " cr: " + cr);
                             cr = ccFactory.createCar(currSource, findSink());
                         }
+                    if(cr != null) {
+                        carArrived.set(i, true);
+                        // System.out.println("car added");
                     }
+
+                    /*} else {
+                        System.out.println("source blocked");
+                    }*/
                 }
             }
         }
     }
 
     /**
-     * @param source source
+     *
      * @return true if there are cars too close to the source, false if a new car could be placed at the source
      */
 

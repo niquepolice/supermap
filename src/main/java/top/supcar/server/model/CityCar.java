@@ -18,8 +18,11 @@
 
 package top.supcar.server.model;
 
+import com.sun.org.apache.xpath.internal.operations.Mod;
 import info.pavie.basicosmparser.model.Node;
 import top.supcar.server.session.SessionObjects;
+import top.supcar.server.graph.Distance;
+import top.supcar.server.graph.Graph;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -31,12 +34,17 @@ import java.util.List;
 public class CityCar extends Car {
 
 	public CityCar(SessionObjects sessionObjects, List<Node> route, Driver driver,
-				   double maxAcc, double mu) {
+				   double maxAcc, double mu, int lane) {
+
+	    Distance distance = sessionObjects.getDistance();
+	    Graph graph = sessionObjects.getGraph();
 		this.routeList = route;
 		this.speed = speed;
 		//this.destIndex = route.size() - 1;
 		this.sessionObjects = sessionObjects;
 		this.mu = mu;
+		this.lane.add(lane);
+
 		routeArray = new ArrayList<Node>();
 
 		Iterator it = route.iterator();
@@ -51,11 +59,24 @@ public class CityCar extends Car {
 		this.driver = driver;
 		driver.setCar(this);
 		type = "C";
-		pos = new Node(0, route.get(0).getLat(), route.get(0).getLon());
-		toNextNode = sessionObjects.getDistance().distanceBetween(routeArray.get(0),
-				routeArray.get(1));
+		Node first = route.get(0); Node next = route.get(1);
+		pos = new Node(0, first.getLat(), first.getLon());
+		toNextNode = distance.distanceBetween(first, next);
 		setMaxSpeeds();
+        if(route.get(0).getId().equals("N-13")) {
+            if (maxspeeds.size() > 1) {
+                speed = Math.min(Math.max(3, maxspeeds.get(1)), ModelConstants.CITY_CAR_DEF_SPEED);
+            }
+        }
 
+
+
+        setMinMaxLanes();
+        setShift();
+        setLineWhereCarTurns();
+        orientation = distance.angle(first, next);
+        //System.out.println("init shift = " + shift);
+        //correctPosAccountForShift();
 	}
 
 

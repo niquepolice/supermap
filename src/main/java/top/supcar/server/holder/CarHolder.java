@@ -25,6 +25,7 @@ import top.supcar.server.model.Car;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -39,14 +40,34 @@ public class CarHolder extends Holder {
 	public void updatePosition(Car car) {
 		SelectedRect selectedRect = sessionObjects.getSelectedRect();
 		//System.out.println("srect urlat: " + selectedRect.getUpperRight().getLat());
+
+        if(car.isCrashed()) {
+            removeCar(car);
+            return;
+        }
+
+        if(car.getToNextNode() < -30) {
+            System.out.println("car deleted: tonextnode < -CONST");
+            removeCar(car);
+            return;
+        }
+
+
 		double lon = car.getPos().getLon();
 		double lat = car.getPos().getLat();
 		int row = findRow(lon), line = findLine(lat);
 		int[] posInTable;
 
 		if(adresses.containsKey(car)) {
+
+            ArrayList<Node> routelist = car.getRouteList();
+            if((routelist.size() - 1) == car.getPrevNodeIndex()) {
+                removeCar(car);
+                return;
+            }
+
 			posInTable = adresses.get(car);
-			//		System.out.println("row: " + row + " line: " + line + " pos0 " +posInTable[0] + " pos1 " + posInTable[1]);
+			//		System.out.println("row: " + row + " lane: " + lane + " pos0 " +posInTable[0] + " pos1 " + posInTable[1]);
 			if(row != posInTable[0] ||  line != posInTable[1]) {
 				removeCar(car);
 				//	System.out.println("remove");
@@ -54,11 +75,11 @@ public class CarHolder extends Holder {
 					putCar(car, row, line);
 				else {
                     if(car.getPrevNodeIndex() != car.getRouteList().size() - 1) {
-                        System.out.println("car deleted and we dont know why, sending car and its route's last node");
+                        System.out.println("car deleted and we dont know why, " + "turns: "+ car.turns);
                         List<Node> dbg = new ArrayList<>();
                         dbg.add(car.getPos());
                         dbg.add(car.getRouteList().get(car.getRouteList().size() - 1));
-                        sessionObjects.getClientProcessor().drawNodes(dbg, 0.4           );
+                        sessionObjects.getClientProcessor().drawNodesTogether(dbg, 0.4           );
 
                     }
                 }
@@ -67,45 +88,10 @@ public class CarHolder extends Holder {
 		} else if(row > -1 && line > -1) {
 			putCar(car, row, line);
 		}
-		ArrayList<Node> routelist = car.getRouteList();
-		if((routelist.size() - 1) == car.getPrevNodeIndex())
-		    removeCar(car);
+
     }
 
 	public void removeCar(Car car) {
-								/*SelectedRect selectedRect = sessionObjects.getSelectedRect();
-								double lon = car.getPos().getLon();
-								double lat = car.getPos().getLat();
-								double upperRightLon = selectedRect.getUpperRight().getLon();
-								double upperRightLat = selectedRect.getUpperRight().getLat();
-								double lowerLeftLon = selectedRect.getLowerLeft().getLon();
-								double lowerLeftLat = selectedRect.getLowerLeft().getLat();
-								if (lon > upperRightLon)
-												lon = upperRightLon - cellSizeLonDeg;
-								if (lon < lowerLeftLon)
-												lon = lowerLeftLon + cellSizeLonDeg;
-								if (lat > upperRightLat)
-												lat = upperRightLat - cellSizeLatDeg;
-								if (lat < lowerLeftLat)
-												lat = lowerLeftLat + cellSizeLatDeg;
-
-								int row = findRow(lon);
-								int line = findLine(lat);
-
-								List cell = table.get(row).get(line);
-
-								int index = cell.indexOf(car);
-
-								if (index < 0) {
-												System.out.println("!!! error occurred while removing car: car didn't " +
-																				"found " +
-																				"in cell (" + row + " , " + line + ")" +
-																				" !!! ");
-								} else {
-												cell.remove(index);
-												adresses.remove(car);
-								}*/
-
 		int[] adr = adresses.get(car);
 		int row = adr[0];
 		int line = adr[1];
@@ -134,7 +120,7 @@ public class CarHolder extends Holder {
 		int[] posInTable = new int[2];
 		posInTable[0] = row;
 		posInTable[1] = line;
-		//System.out.println("put car in row: " + row + " line: " + line);
+		//System.out.println("put car in row: " + row + " lane: " + lane);
 
 		adresses.put(car, posInTable);
 		table.get(row).get(line).add(car);

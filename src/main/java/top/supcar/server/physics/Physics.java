@@ -42,8 +42,10 @@ public class Physics {
 
 		car.setCurrStep(car.getSpeed()*wUpdater.getTimeQuant());
 
-		car.setSpeed(car.getSpeed() + requestedAcc*frictionCoef*wUpdater.getTimeQuant());
-        /*double speed = car.getMaxspeeds().get(car.getPrevNodeIndex() + 1);
+		car.setSpeed((double)Math.round(10.0*(car.getSpeed() + requestedAcc*frictionCoef*wUpdater.getTimeQuant()))/10.0);
+		car.setShiftStep(car.getShiftSpeed()*wUpdater.getTimeQuant());
+        /*
+        double speed = car.getMaxspeeds().get(car.getPrevNodeIndex() + 1);
         if(speed > 100)
             speed = 100;
         car.setSpeed(speed);*/

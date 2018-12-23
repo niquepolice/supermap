@@ -71,7 +71,7 @@ public class OSMData {
         try {
             URLReader reader = new URLReader();
             reader.readWrite(apiURL, filepath);
-        } catch (Exception e) {
+        } catch (Exception e) {//рассмотреть различные варианты возвр ошибок от апи
             e.printStackTrace();
         }
     }
@@ -167,6 +167,23 @@ public class OSMData {
                             if (nextout) nodes.set(i + 1, newnode);
                             if (currout) nodes.set(i, newnode);
 
+                           /* List<double[]> dbg = new ArrayList<>();
+                            System.out.println("way id: " + way.getId() +
+                                    " lon: " + newnode.getLon() + " lat: " + newnode.getLat());
+
+                            double[] coord1 = {node.getLon(), node.getLat()};
+                            dbg.add(coord1);
+                            double[] coord2 = {newnode.getLon(), newnode.getLat()};
+                            dbg.add(coord2);
+                            double[] coord3 = {nextnode.getLon(), nextnode.getLat()};
+                            dbg.add(coord3);
+
+                            sessionObjects.getClientProcessor().sendTestCoord(dbg);
+                            try {
+                                Thread.sleep(10);
+                            } catch (Exception e) {
+                                System.out.println("EXEPTION!");
+                            }*/
                         }
                     }
 
@@ -181,9 +198,11 @@ public class OSMData {
                 node = nodesIter.next();
                 if(!sessionObjects.getSelectedRect().inRectangle(node)) {
                     nodesIter.remove();
+                    //System.out.println("removed node " + node.getLon() + " " + node.getLat());
                 }
             }
         }
+       // drawAllNodes();
 
 
         map = null;
@@ -211,7 +230,8 @@ public class OSMData {
     }
 
     private String setPath(){
-        String uniqPath = sessionObjects.toString() + ".osm";
+        URL furl = getClass().getResource("/top/supcar/server/parse/map.osm");
+        String uniqPath = furl.getPath().replaceAll("map.osm", sessionObjects.toString() + ".osm");
         return uniqPath;
     }
 
@@ -226,7 +246,7 @@ public class OSMData {
                 dbg.add(node);
             }
         }
-        sessionObjects.getClientProcessor().drawNodes(dbg, 100);
+        sessionObjects.getClientProcessor().drawNodesTogether(dbg, 100);
 
     }
 

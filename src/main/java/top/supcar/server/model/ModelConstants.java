@@ -24,11 +24,18 @@ package top.supcar.server.model;
 public class ModelConstants {
     //meters, seconds
 	public static final double CITY_CAR_DEF_LEN = 4;
-	public static final double CITY_CAR_DEF_SPEED = 0;
+	public static final double CITY_CAR_DEF_SPEED = 13;
 	public static final double CITY_MAX_SPEED = 17;
     public static final double CITY_CAR_DEF_MU = 0.5;
 	public static final double CITY_CAR_DEF_MAX_ACC = 3;
 	public static final double RECOMMENDED_DISTANCE = 20;
-	public static final double LINE_BREADTH = 3;
+	public static final double SPAWN_DISTANCE = 10;
+	public static final double LINE_BREADTH = 1.5;
+	public static final double CITY_CAR_MAX_SHIFT_SPEED = 0.5;
+	public static final double SHIFT_MISTAKE = 0.3;
+	public static final double SERIOUS_CLOSESNESS_T = 3; //time
+	public static final double DRIVER_SIGHT_RANGE = Math.PI/4; //максимальное отклонение от напралвения взгляда
+    public static final double SERIOUS_CLOSESNESS_M = 7;
+    //public static final double LINE_BREADTH_DRAW = 1;
 
 }

@@ -38,13 +38,12 @@ public class CreationParams {
 
     static final double SERVICE_SPAWN_PERIOD = 180;
 	static final double LIVING_STREET_SPAWN_PERIOD = 180;
-    static final double RESIDENTIAL_SPAWN_PERIOD = 180;
+    static final double RESIDENTIAL_SPAWN_PERIOD = 30;
     static final double TERTIARY_SPAWN_PERIOD = 10;
-    static final double SECONDARY_SPAWN_PERIOD = 1;
-    static final double PRIMARY_SPAWN_PRIOD = 0.3;
+    static final double SECONDARY_SPAWN_PERIOD = 4;
+    static final double PRIMARY_SPAWN_PERIOD = 3;
     static final double OTHER_SPAWN_PERIOD = 10;
-
-
+    static final double MOTORWAY_SPAWN_PERIOD = 2;
 
 
 	static {

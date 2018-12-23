@@ -26,12 +26,14 @@ import top.supcar.server.graph.Distance;
 import top.supcar.server.graph.Graph;
 import top.supcar.server.holder.CarHolder;
 import top.supcar.server.model.Car;
+import top.supcar.server.model.ModelConstants;
 import top.supcar.server.model.creation.CarSetter;
 import top.supcar.server.parse.OSMData;
 import top.supcar.server.physics.Physics;
 import top.supcar.server.update.CarsUpdater;
 import top.supcar.server.update.WorldUpdater;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +64,11 @@ public class ClientProcessor {
 		}
 	}
 	private void prepare(Node ll, Node ur ) {
-        String url = "http://www.overpass-api.de/api/xapi?way[bbox="+ll.getLon() +"," +ll.getLat()+","+ur.getLon()+","+ur.getLat()+"]";
+		//String url = "http://www.overpass-api.de/api/xapi?way[bbox=30.258916543827283,59.917968282222404,30.34371726404213,59.94531882096226]";
+        //String url = "http://www.overpass-api.de/api/xapi?way[bbox="+ll.getLon() +"," +ll.getLat()+","+ur.getLon()+","+ur.getLat()+"]";
+        String url = "https://overpass.kumi.systems/api/xapi?way[bbox="+ll.getLon() +"," +ll.getLat()+","+ur.getLon()+","+ur.getLat()+"]";
+        //ll = new Node(0, 59.9179682, 30.258916);
+		// ur = new Node(0, 59.945318820, 30.343717);
 
 		sessionObjects = new SessionObjects();
 		sessionObjects.setClientProcessor(this);
@@ -152,6 +158,7 @@ public class ClientProcessor {
 		}
 
         if(result.keySet().toArray()[0].equals("button_msg")){
+            System.out.println("key: " +result.keySet().toArray()[0]);
             String msg = (String)result.get(result.keySet().toArray()[0]);
             if(msg.equals("close")){
                 stop();
@@ -186,11 +193,15 @@ public class ClientProcessor {
 	private void sendJson() {
 		ArrayList<double[]> carsCoordinates = new ArrayList<>();
 		ArrayList<Car> cars = sessionObjects.getCarHolder().getCars();
+		double lon, lat;
 
 		//System.out.println("num of cars: " + cars.size());
 
 		for (Car car : cars) {
-			double[] coordinates = {car.getPos().getLon(), car.getPos().getLat()};
+		    Node nd = car.getPosWithShift();
+		    lon = nd.getLon();
+		    lat = nd.getLat();
+			double[] coordinates = {lon, lat};
 			carsCoordinates.add(coordinates);
 		}
 		try {
@@ -218,16 +229,17 @@ public class ClientProcessor {
 
     /**
      *
-     * @param list list
+     * @param list
      * @param pause in seconds
      */
-    public void drawNodes(List<Node> list, double pause) {
+    public void drawNodesWithPauses(List<Node> list, double pause) {
         List<double[]> coords = new ArrayList<>();
         for(Node node : list) {
             double[] coord = {node.getLon(), node.getLat()};
             coords.add(coord);
             sessionObjects.getClientProcessor().sendTestCoord(coords);
             try {
+                System.out.println(Thread.currentThread().getName());
                 Thread.sleep((long)pause*1000);
             } catch (Exception e) {
                 System.out.println("EXEPTION!");
@@ -236,6 +248,20 @@ public class ClientProcessor {
         }
 
     }
+    public void drawNodesTogether( List<Node> list, double pause) {
+		List<double[]> coords = new ArrayList<>();
+		for (Node node : list) {
+			double[] coord = {node.getLon(), node.getLat()};
+			coords.add(coord);
+			sessionObjects.getClientProcessor().sendTestCoord(coords);
+		}
+		try {
+			//  System.out.println(Thread.currentThread().getName());
+			Thread.sleep((long) pause * 1000);
+		} catch (Exception e) {
+			System.out.println("EXEPTION!");
+		}
+	}
 
     private void setX(int X) {
         sessionObjects.getWorldUpdater().setX(X);

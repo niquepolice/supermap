@@ -20,6 +20,7 @@ package top.supcar.server.graph;
 
 import java.util.*;
 
+import com.sun.org.apache.xpath.internal.operations.Mod;
 import info.pavie.basicosmparser.model.*;
 import info.pavie.basicosmparser.model.Node;
 import top.supcar.server.session.SessionObjects;
@@ -55,7 +56,6 @@ public class Graph extends PriorityQueue{
     /** The field is for getting the saved parameters of this session **/
     private SessionObjects sessionObjects;
 
-//CONSTRUCTOR
     public Graph(Map<String,Way> map, SessionObjects sessionObjects){
         this.sessionObjects = sessionObjects;
         setInterMap(map);
@@ -246,31 +246,81 @@ public class Graph extends PriorityQueue{
         return dijkstra.getWay(a, b);
     }
 
-    /**
-     *
-     * @param currNode is a current {@link Node} <br>
-     * @param nextNode is the next {@link Node} <br>
-     * @return the weight of the way
-     */
-    private double getWeight(Node currNode, Node nextNode) {
+    public Way wayWhereAreBothNodesArePlaced(Node a, Node b) {
         Way wayWhereAreBothNodesArePlaced = null;
-        double speed;
-        List<Way> list1 = nodeWays.get(currNode), list2 = nodeWays.get(nextNode);
+        List<Way> list1 = nodeWays.get(a), list2 = nodeWays.get(b);
         for(Way way1  : list1) {
             for(Way way2 : list2) {
                 if(way1 == way2)
                     wayWhereAreBothNodesArePlaced = way1;
             }
         }
-        speed = getAvgSpeed(wayWhereAreBothNodesArePlaced);
+        return  wayWhereAreBothNodesArePlaced;
+    }
+
+    /**
+     *
+     * @param way
+     * @return lanes forward or 1 if lanes == 1 and road isn't oneway
+     */
+
+    public int numOfLanesFwd(Way way) {
+        String lanes = way.getTags().get("lanes:forward");
+        String onewayStr = way.getTags().get("oneway");
+        boolean oneway = (onewayStr == null || onewayStr.equals("no"));
+
+        if (lanes != null) return Integer.parseInt(lanes);
+
+        lanes = way.getTags().get("lanes");
+        //if(lanes != null)
+       // System.out.println(Integer.parseInt(lanes));
+
+        if (lanes != null) {
+            if(!oneway) return Math.max(Integer.parseInt(lanes) / 2, 1);
+             else return Integer.parseInt(lanes);
+        }
+        else return 1;
+    }
+    /**
+     *
+     * @param way
+     * @return lanes backward or 1 if lanes == 1 and road isn't oneway
+     */
+
+    public int numOfLanesBwd(Way way) {
+        boolean oneway = oneway(way);
+        String lanes = way.getTags().get("lanes:backward");
+
+        if(oneway) return 0;
+        else if(lanes != null) return Integer.parseInt(lanes);
+        lanes = way.getTags().get("lanes");
+        if(lanes != null) return Math.max(Integer.parseInt(lanes)/2, 1);
+        else return 1;
+    }
+
+    public int numOfLanesBetween(Node n1, Node n2) {
+        Way way = wayWhereAreBothNodesArePlaced(n1, n2);
+        if(way.getNodes().indexOf(n1) < way.getNodes().indexOf(n2))
+            return numOfLanesFwd(way);
+        else
+            return numOfLanesBwd(way);
+    }
+    public boolean oneway(Way way) {
+        String onewayStr = way.getTags().get("oneway");
+        return (onewayStr != null && onewayStr.equals("yes"));
+    }
+    public boolean oneway(Node n1, Node n2) {
+        return oneway(wayWhereAreBothNodesArePlaced(n1,n2));
+    }
+
+
+    private double getWeight(Node currNode, Node nextNode) {
+
+        double speed = getAvgSpeed(wayWhereAreBothNodesArePlaced(currNode, nextNode));
 
         return sessionObjects.getDistance().distanceBetween(currNode, nextNode)/speed;
     }
 
-    /**
-     * @param way is the chosen way where an average speed is needed to be calculated <br>
-     * @return the average speed in the road
-     */
     private double getAvgSpeed(Way way) {
         double speed = ModelConstants.CITY_MAX_SPEED/2;
         String highway = way.getTags().get("highway");
@@ -278,5 +328,6 @@ public class Graph extends PriorityQueue{
             speed /= 3;
         }
         return speed;
+
     }
 }

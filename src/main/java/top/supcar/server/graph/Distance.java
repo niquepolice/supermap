@@ -18,8 +18,12 @@
 
 package top.supcar.server.graph;
 
+import info.pavie.basicosmparser.model.Element;
 import info.pavie.basicosmparser.model.Node;
+import info.pavie.basicosmparser.model.Way;
 import top.supcar.server.session.SelectedRect;
+
+import java.util.*;
 
 /**
  * Operations with coordinates and distances
@@ -66,6 +70,91 @@ public class Distance {
 		double d = R * c;
 		return  d;
 	}
+
+    /**
+     * Возвращает угол между осью абсцисс и ветором n1n2
+     * @param n1
+     * @param n2
+     * @return
+     */
+
+	public double angle(Node n1, Node n2) {
+
+	    double angle;
+
+        double dx = lonDegToMeters(n2.getLon() - n1
+                .getLon());
+        double dy = latDegToMeters(n2.getLat() - n1
+                .getLat());
+
+        angle = Math.acos(dx/Math.sqrt(dx*dx+dy*dy));
+
+        if(dy < 0)
+            angle *= -1;
+
+        return angle;
+    }
+
+    public Node linesIntersection(Node n1, Node n2, double[] line2) {
+	    double a2 = line2[0], b2 = line2[1], c2 = line2[2];
+	    double[] abc = lineVertToAbc(n1, n2);
+        double a1 = abc[0], b1 = abc[1], c1 = abc[2];
+
+        //ищем пересечение
+
+        double d = a1*b2 - a2*b1;
+
+        if(d == 0) {
+            return null;
+        }
+
+        double x01 = (b1 * c2 - b2 * c1) / d;
+        double y01 = (a2 * c1 - a1 * c2) / d;
+        Node nd = new Node(0, y01, x01);
+        return nd;
+    }
+
+    public double[] lineVertToAbc(Node n1, Node n2){
+        double x1 = n1.getLon(), y1 = n1.getLat(), x2 = n2.getLon(), y2 = n2.getLat();
+        double a = y1 - y2;
+        double b = x2 - x1;
+        double c = x1*y2 - x2*y1;
+
+        return new double[]{a, b, c};
+    }
+
+    public double distToLine(Node lineN1, Node lineN2, Node node) {
+	  return distanceBetween(node, projection(lineN1, lineN2, node));
+    }
+
+    public Node projection(Node lineN1, Node lineN2, Node node) {
+        double[] line = perp(lineN1, lineN2, node);
+        return linesIntersection(lineN1, lineN2, line);
+    }
+    public double[] perpVect(Node lineN1, Node lineN2) {
+        double x1 = lineN1.getLon(), y1 = lineN1.getLat();
+        double x2 = lineN2.getLon(), y2 = lineN2.getLat();
+        double a = x2 - x1;
+        a *= lonDegToMeters(1);
+        double b = y2 - y1;
+        b *= latDegToMeters(1);
+        double n1 = -b;
+        double n2 = a;
+        n1 /= lonDegToMeters(1);
+        n2 /= latDegToMeters(1);
+
+        return new double[]{n1, n2};
+    }
+    public double[] perp(Node lineN1, Node lineN2, Node node) {
+        double x0 = node.getLon(), y0 = node.getLat();
+        double[] normVect = perpVect(lineN1, lineN2);
+        double b = -normVect[0];
+        double a = normVect[1];
+        double c = -a*x0 - b*y0;
+        double[] line = {a, b, c};
+
+        return line;
+    }
 
 	public double latDegToMeters(double deg) {
 		return deg*metersPerDegLat;

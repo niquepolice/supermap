@@ -258,6 +258,7 @@ public class Driver {
         if(!newWay.equals(lastway)) {
             int lanes = graph.numOfLanesBetween(car.routeArray.get(car.prevNodeIndex),
                     car.routeArray.get(car.prevNodeIndex+1));
+            if (lanes < 1) lanes = 1; //TODO: fix java.lang.IllegalArgumentException: bound must be positive
             desiredLane = random.nextInt(lanes) + 1;
 //            System.out.println(lastway.getTags().get("name") + " -> " + newWay.getTags().get("name") +
 //                     " lanes: " + lanes + " desired lane: " + desiredLane );

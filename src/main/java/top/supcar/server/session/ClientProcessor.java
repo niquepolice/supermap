@@ -38,6 +38,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static sun.misc.Version.println;
+
 /**
  * Created by 1 on 25.04.2017.
  */
@@ -49,7 +51,7 @@ public class ClientProcessor {
 	private int stopFlag;
 	private OSMData data;
 	private Kmp kmp;
-	private int X = 1;
+	private double X = 1;
 
 	public ClientProcessor(Session session) {
 		this.session = session;
@@ -91,6 +93,12 @@ public class ClientProcessor {
 		Graph graph = new Graph(roads, sessionObjects);
 		sessionObjects.setGraph(graph);
 
+		setLife(sessionObjects);
+
+		runFlag = 1;
+	}
+
+	private void setLife(SessionObjects sessionObjects) {
 		CarHolder carHolder = new CarHolder(sessionObjects, 100);
 		sessionObjects.setCarHolder(carHolder);
 
@@ -102,7 +110,6 @@ public class ClientProcessor {
 		sessionObjects.setCarsUpdater(carsUpdater);
 		WorldUpdater worldUpdater = new WorldUpdater(sessionObjects);
 		sessionObjects.setWorldUpdater(worldUpdater);
-		runFlag = 1;
 	}
 
 	private void go() {
@@ -116,7 +123,7 @@ public class ClientProcessor {
 				//System.out.println(Instant.now());
 				try {
 					sendJson();
-					Thread.sleep(20/X);
+					Thread.sleep((long)(20/X));
 
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -147,8 +154,10 @@ public class ClientProcessor {
 	public void handleMsg (String message){
 
         Map result = (Map) gson.fromJson(message, Object.class);
-        if(result.keySet().toArray()[0].equals("SelectedRect")) {
-			String[] coordinates = result.get(result.keySet().toArray()[0]).toString().split(",");
+		String messageType = (String)result.get("messageType");
+
+        if(messageType.equals("selectedRect")) {
+			String[] coordinates = result.get("coordinates").toString().split(",");
 			Node ll = new Node(0, Double.parseDouble(coordinates[1]), Double.parseDouble(coordinates[0]));
 			Node ur = new Node(0, Double.parseDouble(coordinates[3]), Double.parseDouble(coordinates[2]));
 			this.prepare(ll, ur);
@@ -157,9 +166,9 @@ public class ClientProcessor {
 			//this.go();
 		}
 
-        if(result.keySet().toArray()[0].equals("button_msg")){
-            System.out.println("key: " +result.keySet().toArray()[0]);
-            String msg = (String)result.get(result.keySet().toArray()[0]);
+        else if(messageType.equals("buttonMsg")){
+            System.out.println("key: " +messageType);
+            String msg = (String)result.get("value");
             if(msg.equals("close")){
                 stop();
 			}
@@ -170,26 +179,49 @@ public class ClientProcessor {
 				play();
 			}
         }
-		if(result.keySet().toArray()[0].equals("speed_change")){
-			Map values = (Map)result.get(result.keySet().toArray()[0]);
-			Double oldVal = (Double)values.get(values.keySet().toArray()[0]);
+		else if(messageType.equals("speedChange")){
+			Map values = (Map)result.get("value");
+			//Double oldVal = (Double)values.get(values.keySet().toArray()[0]);
 			Double newVal = (Double)values.get(values.keySet().toArray()[1]);
-			if(!oldVal.equals(newVal)){
+			if( X != newVal){
 				setX(newVal.intValue());
             }
 
 		}
-		if(result.keySet().toArray()[0].equals("capacity_change")){
-			Map values = (Map)result.get(result.keySet().toArray()[0]);
+		else if(messageType.equals("capacityChange")){
+			Map values = (Map)result.get("value");
 			Double oldVal = (Double)values.get(values.keySet().toArray()[0]);
 			Double newVal = (Double)values.get(values.keySet().toArray()[1]);
 			if(!oldVal.equals(newVal)){
 				setCapacity(newVal.intValue());
             }
 		}
+		else if(messageType.equals("manual_mode")) {
+
+        }
+        else if(messageType.equals("auto_mode")) {
+        	setLife(sessionObjects);
+        }
+        else if(messageType.equals("configFile")){
+			ArrayList<Double> coordinates = (ArrayList<Double>)result.get("rectangle");
+
+			Node ll = new Node(0, coordinates.get(0),coordinates.get(1));
+			Node ur = new Node(0, coordinates.get(2), coordinates.get(3));
+
+			String mode = (String)result.get("mode");
+			if (mode.equals("auto")) {
+
+				this.prepare(ll, ur);
+				kmp = new Kmp();
+				kmp.start();
+			} else {
+
+			}
+		}
 
 
     }
+
 	private void sendJson() {
 		ArrayList<double[]> carsCoordinates = new ArrayList<>();
 		ArrayList<Car> cars = sessionObjects.getCarHolder().getCars();
@@ -242,7 +274,7 @@ public class ClientProcessor {
                 System.out.println(Thread.currentThread().getName());
                 Thread.sleep((long)pause*1000);
             } catch (Exception e) {
-                System.out.println("EXEPTION!");
+                System.out.println("EXCEPTION!");
             }
 
         }
@@ -259,7 +291,7 @@ public class ClientProcessor {
 			//  System.out.println(Thread.currentThread().getName());
 			Thread.sleep((long) pause * 1000);
 		} catch (Exception e) {
-			System.out.println("EXEPTION!");
+			System.out.println("EXCEPTION!");
 		}
 	}
 

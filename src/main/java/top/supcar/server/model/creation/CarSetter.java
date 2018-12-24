@@ -18,6 +18,7 @@
 
 package top.supcar.server.model.creation;
 
+import com.sun.org.apache.xpath.internal.SourceTree;
 import info.pavie.basicosmparser.model.Node;
 import info.pavie.basicosmparser.model.Way;
 import top.supcar.server.session.SessionObjects;
@@ -33,6 +34,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
+import static java.lang.Math.max;
+
 public class CarSetter {
     private SessionObjects sessionObjects;
     private CityCarFactory ccFactory;
@@ -42,14 +45,18 @@ public class CarSetter {
     private List<Double> periods; //how often cars should arrive at each source
     private Instant lastInstant;
     private List<Double> timePassed;
-    private List<Boolean> carArrived;
+    public List<Boolean> carArrived;
     private List<Integer> sinksPriorities;
     private List<Integer> sinkPosInQueue;
+    private List<Map> manualSettedRoutes;
+    private Map<Node, Node> manualSettedSinksSources;
+    private List<Integer> carsCounter;
     private int capacity = 1;
 
-    public CarSetter(SessionObjects sessionObjects, int busyLvl) {
+    public CarSetter(SessionObjects sessionObjects, int busyLvl, List<Map> routes) {
         this.busyLvl = busyLvl;
         this.sessionObjects = sessionObjects;
+        this.manualSettedRoutes = routes;
         ccFactory = new CityCarFactory(sessionObjects);
         findSrcsSinks();
         setCars();
@@ -62,6 +69,27 @@ public class CarSetter {
         if (sources == null || sinks == null) {
             findSrcsSinks();
         }
+        if (manualSettedRoutes.size() == 0) {
+            setPeriodsAuto();
+        } else {
+            System.out.println("msr size: " + manualSettedRoutes.size());
+            setPeriodsManual();
+        }
+
+    }
+
+    private void setPeriodsManual() {
+        periods = new ArrayList<>(sources.size());
+        carsCounter = new ArrayList<>(Collections.nCopies(sources.size(), 0));
+        timePassed = new ArrayList<>(Collections.nCopies(sources.size(), 0.0));
+        carArrived = new ArrayList<>(Collections.nCopies(sources.size(), false));
+        for(int i = 0; i < sources.size(); i++) {
+            periods.add(max(0.2, (Double)manualSettedRoutes.get(i).get("delay")));
+        }
+
+    }
+
+    private void setPeriodsAuto() {
         if (periods == null) {
             System.out.println(sources.size());
             periods = new ArrayList<>(sources.size());
@@ -92,6 +120,9 @@ public class CarSetter {
      * подготавливает массив, определяющий вероятность назначения машине данной точки назначения
      */
     private void setSinksPriorities() {
+        if (manualSettedRoutes.size() > 0)
+                return;
+
         List<Double> periods = new ArrayList<>(sinks.size());
         sinksPriorities = new ArrayList<Integer>(sinks.size());
         sinkPosInQueue = new ArrayList<>(sinks.size());
@@ -156,20 +187,24 @@ public class CarSetter {
         return period/capacity;
     }
 
-    private Node findSink() {
-        int sinksSize = sinks.size();
-        int index = (int)(Math.random()*sinksSize);
-        int posInQueue;
+    private Node findSink(Node currSource) {
         Node sink = null;
-        while(sink == null) {
-            if(index == sinksSize) index = 0;
-            posInQueue = sinkPosInQueue.get(index);
-            sinkPosInQueue.set(index, --posInQueue);
-            if(posInQueue == 0) {
-                sinkPosInQueue.set(index, sinksPriorities.get(index));
-                sink = sinks.get(index);
+        if (manualSettedRoutes.size() == 0) {
+            int sinksSize = sinks.size();
+            int index = (int) (Math.random() * sinksSize);
+            int posInQueue;
+            while (sink == null) {
+                if (index == sinksSize) index = 0;
+                posInQueue = sinkPosInQueue.get(index);
+                sinkPosInQueue.set(index, --posInQueue);
+                if (posInQueue == 0) {
+                    sinkPosInQueue.set(index, sinksPriorities.get(index));
+                    sink = sinks.get(index);
+                }
+                index++;
             }
-            index++;
+        } else {
+           sink = manualSettedSinksSources.get(currSource);
         }
         return sink;
     }
@@ -185,9 +220,8 @@ public class CarSetter {
 
         double initSpawnProbability = CreationParams.DEFAULT_LVL_INIT_SPAWN_PROBABILITY;
 
-        if (sources == null || sinks == null) findSrcsSinks();
         if (periods == null) setPeriods();
-        if (sinksPriorities == null) setSinksPriorities();
+        if (sinksPriorities == null && manualSettedRoutes.size() == 0) setSinksPriorities();
 
        /* List<Node> nodes = sessionObjects.getGraph().getVertexList();
 
@@ -230,7 +264,7 @@ public class CarSetter {
         double spawnProbability, random;
         Node currSource;
 
-        int sinksSize = sinks.size();
+        //int sinksSize = sinks.size();
         Car cr = null;
         if(lastInstant == null) {
             lastInstant = Instant.now();
@@ -247,39 +281,50 @@ public class CarSetter {
 
         for(int i = 0; i < sources.size(); i++) {
             currSource = sources.get(i);
-          //  System.out.println("lasttimeq: " + lastTimeQuant);
 
             timePassed.set(i, timePassed.get(i) + lastTimeQuant);
-            //System.out.println("!carArrived: " + i + " timePassed: " + timePassed.get(i) + " period: " + periods.get(i));
             if (timePassed.get(i) >= periods.get(i)) {
+
                 carArrived.set(i, false);
                 timePassed.set(i, 0.0);
             }
             if (!carArrived.get(i)) {
-              //  System.out.println("!carArrived: " + i + " timePassed: " + timePassed.get(i) + " period: " + periods.get(i));
                 spawnProbability = lastTimeQuant/(periods.get(i) - timePassed.get(i));
                 random = Math.random();
-                // System.out.println("period: " + periods.get(i) + " time passed " + timePassed.get(i) + " ltq/time remained: " +
-                //  lastTimeQuant/(periods.get(i) - timePassed.get(i)) + " random: " + random);
+
                 if (random <= spawnProbability) {
-                    // if (!sourceBlocked(currSource)) {
-                    //System.out.println("car should be added, timePassed: " + timePassed.get(i) + " period: " + periods.get(i));
-                    //TODO: optimize
-                    for (int j = 0; j < 5 && cr == null; j++) {
-                            //		System.out.println("i: " + i + " cr: " + cr);
-                            cr = ccFactory.createCar(currSource, findSink());
+                    if (allowedToSpawnMoreCars(i))
+                    {
+                        //TODO: optimize
+                        for (int j = 0; j < 5 && cr == null; j++) {
+
+                            cr = ccFactory.createCar(currSource, findSink(currSource));
                         }
-                    if(cr != null) {
-                        carArrived.set(i, true);
-                        // System.out.println("car added");
+                        if (cr != null) {
+                            carArrived.set(i, true);
+                            if (manualSettedRoutes.size() > 0)
+                                carsCounter.set(i, carsCounter.get(i)+1);
+                            //System.out.println(i + " " + carsCounter.get(i) + " " +
+                            //        sessionObjects.getCarHolder().getCars().size());
+
+                        }
                     }
 
-                    /*} else {
-                        System.out.println("source blocked");
-                    }*/
                 }
             }
         }
+    }
+
+    private boolean allowedToSpawnMoreCars(int i) {
+        if (manualSettedRoutes.size() == 0)
+            return true;
+        int maxCarsAllowed =
+                ((Double)manualSettedRoutes.get(i).get("maxCarsCount")).intValue();
+
+        if (carsCounter.get(i) < maxCarsAllowed || maxCarsAllowed < 0)
+            return true;
+
+        return false;
     }
 
     /**
@@ -305,6 +350,37 @@ public class CarSetter {
     }
 
     private void findSrcsSinks() {
+        if (manualSettedRoutes.size() == 0) {
+            findSrcsSinksAuto();
+            return;
+        } else {
+            findSrcsSinksManual();
+        }
+
+    }
+
+    private void findSrcsSinksManual() {
+        Graph graph = sessionObjects.getGraph();
+        sources = new ArrayList<>();
+        manualSettedSinksSources = new HashMap<>();
+        for (int i = 0; i < manualSettedRoutes.size(); i++) {
+            ArrayList<Double> st = (ArrayList<Double>)manualSettedRoutes.get(i).get("start");
+            ArrayList<Double> fn = (ArrayList<Double>)manualSettedRoutes.get(i).get("finish");
+            Node start = new Node(0, st.get(0), st.get(1));
+            Node finish = new Node(0, fn.get(0), fn.get(1));
+            start = graph.nearestNode(start);
+            finish = graph.nearestNode(finish);
+           // Node[] _ = {start, finish};
+            //ArrayList<Node> pr = new ArrayList<>(Arrays.asList(_));
+            //sessionObjects.getClientProcessor().drawNodesTogether(pr, 2);
+            manualSettedSinksSources.put(start, finish);
+            sources.add(start);
+        }
+        System.out.println("sources len: " + sources.size());
+        sinks = new ArrayList<>();
+    }
+
+    private void findSrcsSinksAuto() {
         Map<Node, List<Node>> adjList = sessionObjects.getGraph().getAdjList();
         List<Node> candidates = new ArrayList<>(); //первые и последние ноды в дорогах
         List<Node> sources = new ArrayList<>();

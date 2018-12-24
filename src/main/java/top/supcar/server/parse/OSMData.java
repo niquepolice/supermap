@@ -67,13 +67,9 @@ public class OSMData {
     /**
      * Creates object of {@link URLReader} and loads OSM data.
       */
-    public void loadData(){
-        try {
-            URLReader reader = new URLReader();
-            reader.readWrite(apiURL, filepath);
-        } catch (Exception e) {//рассмотреть различные варианты возвр ошибок от апи
-            e.printStackTrace();
-        }
+    public void loadData() throws Exception {
+        URLReader reader = new URLReader();
+        reader.readWrite(apiURL, filepath);
     }
 
     /**
@@ -230,8 +226,7 @@ public class OSMData {
     }
 
     private String setPath(){
-        URL furl = getClass().getResource("/top/supcar/server/parse/map.osm");
-        String uniqPath = furl.getPath().replaceAll("map.osm", sessionObjects.toString() + ".osm");
+        String uniqPath = sessionObjects.toString() + ".osm";
         return uniqPath;
     }
 

@@ -91,9 +91,11 @@ public class CityCarFactory implements CarFactory {
 			}
 		}
 
-		carHolder.updatePosition(car);
+		if (carHolder.updatePosition(car))
+            return car;
+		else
+		    return null;
 
-		return car;
 
 	}
 }

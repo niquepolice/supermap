@@ -53,7 +53,7 @@ public class Distance {
 	 * @param b end
 	 * @return distance in meters
 	 */
-	public double distanceBetween(Node a, Node b) {
+	public static double distanceBetween(Node a, Node b) {
 		double R = 6371000; // Earth's radius
 		double TRANS = Math.PI/180;
 

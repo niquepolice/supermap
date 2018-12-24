@@ -37,19 +37,20 @@ public class CarHolder extends Holder {
 		super(sessionObjects, cellSize);
 	}
 
-	public void updatePosition(Car car) {
+	/**@return false if car has been removed, true otherways*/
+	public boolean updatePosition(Car car) {
 		SelectedRect selectedRect = sessionObjects.getSelectedRect();
 		//System.out.println("srect urlat: " + selectedRect.getUpperRight().getLat());
 
         if(car.isCrashed()) {
             removeCar(car);
-            return;
+            return false;
         }
 
         if(car.getToNextNode() < -30) {
             System.out.println("car deleted: tonextnode < -CONST");
             removeCar(car);
-            return;
+            return false;
         }
 
 
@@ -63,7 +64,7 @@ public class CarHolder extends Holder {
             ArrayList<Node> routelist = car.getRouteList();
             if((routelist.size() - 1) == car.getPrevNodeIndex()) {
                 removeCar(car);
-                return;
+                return false;
             }
 
 			posInTable = adresses.get(car);
@@ -79,8 +80,8 @@ public class CarHolder extends Holder {
                         List<Node> dbg = new ArrayList<>();
                         dbg.add(car.getPos());
                         dbg.add(car.getRouteList().get(car.getRouteList().size() - 1));
-                        sessionObjects.getClientProcessor().drawNodesTogether(dbg, 0.4           );
-
+                        sessionObjects.getClientProcessor().drawNodesTogether(dbg, 0.4);
+                        return false;
                     }
                 }
 				//	dump();
@@ -88,6 +89,7 @@ public class CarHolder extends Holder {
 		} else if(row > -1 && line > -1) {
 			putCar(car, row, line);
 		}
+		return true;
 
     }
 

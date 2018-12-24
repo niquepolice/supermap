@@ -246,6 +246,20 @@ public class Graph extends PriorityQueue{
         return dijkstra.getWay(a, b);
     }
 
+    public Node nearestNode(Node node) {
+        double distance = 1e10;
+        double currentDist;
+        Node nearest = new Node(0,0,0);
+        for (int i = 0; i < vertexList.size(); i++) {
+            currentDist = Distance.distanceBetween(vertexList.get(i), node);
+            if (currentDist < distance) {
+                distance = currentDist;
+                nearest = vertexList.get(i);
+            }
+        }
+        return nearest;
+    }
+
     public Way wayWhereAreBothNodesArePlaced(Node a, Node b) {
         Way wayWhereAreBothNodesArePlaced = null;
         List<Way> list1 = nodeWays.get(a), list2 = nodeWays.get(b);

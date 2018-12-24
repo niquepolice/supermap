@@ -35,6 +35,7 @@ import top.supcar.server.update.WorldUpdater;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -65,10 +66,14 @@ public class ClientProcessor {
 			go();
 		}
 	}
-	private void prepare(Node ll, Node ur ) {
+	private void prepare(Node ll, Node ur, List<Map> routes) {
+
 		//String url = "http://www.overpass-api.de/api/xapi?way[bbox=30.258916543827283,59.917968282222404,30.34371726404213,59.94531882096226]";
-        //String url = "http://www.overpass-api.de/api/xapi?way[bbox="+ll.getLon() +"," +ll.getLat()+","+ur.getLon()+","+ur.getLat()+"]";
-        String url = "https://overpass.kumi.systems/api/xapi?way[bbox="+ll.getLon() +"," +ll.getLat()+","+ur.getLon()+","+ur.getLat()+"]";
+        String url = "http://www.overpass-api.de/api/xapi?way[bbox="+ll.getLon() +"," +ll.getLat()+","+ur.getLon()+","+ur.getLat()+"]";
+
+
+
+		//String url = "https://overpass.kumi.systems/api/xapi?way[bbox="+ll.getLon() +"," +ll.getLat()+","+ur.getLon()+","+ur.getLat()+"]";
         //ll = new Node(0, 59.9179682, 30.258916);
 		// ur = new Node(0, 59.945318820, 30.343717);
 
@@ -86,30 +91,45 @@ public class ClientProcessor {
 
 		Map<String, Way> roads;
 		data = new OSMData(url, sessionObjects);
-		data.loadData();
-		System.out.println("map downloaded from XAPI ");
+		try {
+			data.loadData();
+		} catch (Exception e) {//рассмотреть различные варианты возвр ошибок от апи
+			e.printStackTrace();
+//			System.err.println("XAPI Error");
+//			//log(e.getMessage());
+//			StackTraceElement[] stack = e.getStackTrace();
+//			String stackstr="";
+//			for (int i = 0; i < Arrays.asList(stack).size(); i++)
+//				stackstr += stack[i] + "\n";
+//			log(stackstr);
+		}
+		log("map downloaded from XAPI ");
 		data.makeMap();
 		roads = data.getMap();
 		Graph graph = new Graph(roads, sessionObjects);
 		sessionObjects.setGraph(graph);
 
-		setLife(sessionObjects);
-
-		runFlag = 1;
-	}
-
-	private void setLife(SessionObjects sessionObjects) {
 		CarHolder carHolder = new CarHolder(sessionObjects, 100);
 		sessionObjects.setCarHolder(carHolder);
 
-		CarSetter cSetter = new CarSetter(sessionObjects, 1);
+		CarSetter cSetter = new CarSetter(sessionObjects, 1, routes);
 		sessionObjects.setCarSetter(cSetter);
 
 		CarsUpdater carsUpdater = new CarsUpdater(sessionObjects);
-
 		sessionObjects.setCarsUpdater(carsUpdater);
+
 		WorldUpdater worldUpdater = new WorldUpdater(sessionObjects);
 		sessionObjects.setWorldUpdater(worldUpdater);
+
+		runFlag = 1;
+	}
+	private void log(String message) {
+		System.out.println(message);
+		try {
+			session.getRemote().sendString("{ \"log\":\" " + message + "\"}");
+		} catch (Exception e) {
+			System.err.println("error while sending log message");
+		}
 	}
 
 	private void go() {
@@ -160,7 +180,7 @@ public class ClientProcessor {
 			String[] coordinates = result.get("coordinates").toString().split(",");
 			Node ll = new Node(0, Double.parseDouble(coordinates[1]), Double.parseDouble(coordinates[0]));
 			Node ur = new Node(0, Double.parseDouble(coordinates[3]), Double.parseDouble(coordinates[2]));
-			this.prepare(ll, ur);
+			this.prepare(ll, ur, new ArrayList<>());
 			kmp = new Kmp();
 			kmp.start();
 			//this.go();
@@ -195,12 +215,6 @@ public class ClientProcessor {
 			if(!oldVal.equals(newVal)){
 				setCapacity(newVal.intValue());
             }
-		}
-		else if(messageType.equals("manual_mode")) {
-
-        }
-        else if(messageType.equals("auto_mode")) {
-        	setLife(sessionObjects);
         }
         else if(messageType.equals("configFile")){
 			ArrayList<Double> coordinates = (ArrayList<Double>)result.get("rectangle");
@@ -211,11 +225,13 @@ public class ClientProcessor {
 			String mode = (String)result.get("mode");
 			if (mode.equals("auto")) {
 
-				this.prepare(ll, ur);
+				this.prepare(ll, ur, new ArrayList<>());
 				kmp = new Kmp();
 				kmp.start();
 			} else {
-
+				this.prepare(ll, ur, (List<Map>)result.get("routes"));
+				kmp = new Kmp();
+				kmp.start();
 			}
 		}
 

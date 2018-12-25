@@ -204,7 +204,7 @@ public class ClientProcessor {
 			//Double oldVal = (Double)values.get(values.keySet().toArray()[0]);
 			Double newVal = (Double)values.get(values.keySet().toArray()[1]);
 			if( X != newVal){
-				setX(newVal.intValue());
+				setX(newVal);
             }
 
 		}
@@ -311,7 +311,7 @@ public class ClientProcessor {
 		}
 	}
 
-    private void setX(int X) {
+    private void setX(double X) {
         sessionObjects.getWorldUpdater().setX(X);
         this.X = X;
     }

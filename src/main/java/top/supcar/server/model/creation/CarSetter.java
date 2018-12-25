@@ -184,7 +184,7 @@ public class CarSetter {
                 period = newPeriod;
         }
 
-        return period/capacity;
+        return period/capacity*3;
     }
 
     private Node findSink(Node currSource) {
